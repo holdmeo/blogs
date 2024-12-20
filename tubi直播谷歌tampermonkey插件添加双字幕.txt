@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tubi直播双字幕 - 修复隐藏逻辑
 // @namespace    http://tampermonkey.net/
-// @version      0.9
-// @description  提取动态字幕，隐藏原有样式并显示双字幕（原文 + 翻译）。
+// @version      0.8
+// @description  显示双字幕（原文 + 翻译），固定位置在底部，并强制隐藏原生字幕。
 // @author       YourName
 // @match        https://tubitv.com/*
 // @grant        GM_addStyle
@@ -12,48 +12,60 @@
 // ==/UserScript==
 
 (function () {
-    'use strict';
+    let lastOriginalText = ''; // 缓存上一次的字幕内容
+    let subtitleObserver; // 用于保存字幕监听器
+    let dualSubtitleContainer; // 保存双字幕容器
+    let lastUpdateTime = 0; // 上一次字幕更新的时间
+    const SUBTITLE_TIMEOUT = 2000; // 两秒无变化后隐藏字幕
 
-    let lastOriginalText = ''; // 缓存上一次的完整字幕内容
-
-    // 隐藏原字幕的背景和颜色（保留 DOM 元素，方便提取内容）
+    // 强制隐藏原字幕容器
     GM_addStyle(`
-        .dynamicSubtitles .tubi-text-track-cue {
-            background: none !important;
-            color: transparent !important; /* 隐藏原字幕 */
+        .o_szq.dynamicSubtitles .tubi-text-track-cue {
+            font-size: 0 !important; /* 隐藏文字但保持可读取 */
+            position: absolute !important;  /* 将span移出视口 */
+            width: 1px !important;  /* 防止span占据空间 */
+            clip: rect(0, 0, 0, 0) !important;  /* 使span不可见 */
         }
     `);
 
     // 初始化字幕监听器
     function observeSubtitles() {
-        // 定位字幕容器
-        const subtitleContainer = document.querySelector('.dynamicSubtitles');
-        if (!subtitleContainer) {
+        // 定位字幕容器（所有含有字幕的父元素）
+        const subtitleContainers = document.querySelectorAll('.o_szq.dynamicSubtitles');
+        if (subtitleContainers.length === 0) {
             console.log('未找到字幕容器，等待加载...');
-            setTimeout(observeSubtitles, 1000); // 每隔 1 秒重试
+            setTimeout(observeSubtitles, 500); // 每隔 0.5 秒重试
             return;
         }
 
-        console.log('字幕容器已找到:', subtitleContainer);
-
-        // 创建 MutationObserver，监听字幕内容变化
-        const observer = new MutationObserver(() => {
-            const subtitleElements = subtitleContainer.querySelectorAll('.tubi-text-track-cue');
-			console.log('监听字幕内容变化',subtitleElements);
-            if (subtitleElements.length > 0) {
-                // 提取所有字幕内容，并拼接成完整句子
-                let originalText = Array.from(subtitleElements)
-                    .map(el => el.innerText.trim())
-                    .join(' ');
-                
-                if (originalText && originalText !== lastOriginalText) {
-                    lastOriginalText = originalText; // 更新缓存
-                    translateAndRender(originalText);
-                }
+        subtitleContainers.forEach(subtitleContainer => {
+            // 如果已有监听器，则先停止
+            if (subtitleObserver) {
+                subtitleObserver.disconnect();
             }
+
+            console.log('字幕容器已找到:', subtitleContainer);
+
+            // 创建 MutationObserver，监听字幕内容变化
+            subtitleObserver = new MutationObserver(() => {
+                const cueElements = subtitleContainer.querySelectorAll('.tubi-text-track-cue');
+                let originalSubtitle = '';
+                cueElements.forEach(cue => {
+                    originalSubtitle += cue.innerText.trim() + ' ';
+                });
+
+                originalSubtitle = originalSubtitle.trim();
+				 console.log('字幕内容：', originalSubtitle);
+                if (originalSubtitle && originalSubtitle !== lastOriginalText) {
+                    lastOriginalText = originalSubtitle; // 更新缓存
+                    translateAndRender(originalSubtitle);
+                }
+            });
+
+            // 监听指定的变动，监听子节点和子树变化
+            subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
         });
 
-        observer.observe(subtitleContainer, { childList: true, subtree: true });
         console.log('字幕监听器已启动');
     }
 
@@ -79,11 +91,11 @@
     // 渲染双字幕
     function translateAndRender(originalText) {
         // 获取视频播放器容器
-        const videoPlayer = document.querySelector('.mj2k9');
+        const videoPlayer = document.querySelector('.UMN55');
         if (!videoPlayer) return;
 
         // 检查并清理旧的双字幕容器
-        let dualSubtitleContainer = document.querySelector('#dualSubtitleContainer');
+        dualSubtitleContainer = document.querySelector('#dualSubtitleContainer');
         if (!dualSubtitleContainer) {
             dualSubtitleContainer = document.createElement('div');
             dualSubtitleContainer.id = 'dualSubtitleContainer';
@@ -101,15 +113,60 @@
 
             // 设置双字幕内容（原文 + 翻译）
             dualSubtitleContainer.innerHTML = `
-                <div style="font-size: 18px; font-family: Arial, sans-serif; color: white; text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.7);">
+                <div style="font-size: 28px; font-family: Arial, sans-serif; color: white; text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.7);">
                     ${originalText}
                 </div>
-                <div style="font-size: 16px; font-family: Arial, sans-serif; color: yellow; text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.7); margin-top: 5px;">
+                <div style="font-size: 25px; font-family: Arial, sans-serif; color: yellow; text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.7); margin-top: 5px;">
                     ${translatedText}
                 </div>
             `;
+
+            // 更新字幕更新时间
+            lastUpdateTime = Date.now();
+            showDualSubtitles(); // 确保显示字幕
         });
     }
+
+    // 显示双字幕
+    function showDualSubtitles() {
+        if (dualSubtitleContainer) {
+            dualSubtitleContainer.style.opacity = '1'; // 显示字幕
+        }
+    }
+
+    // 隐藏双字幕
+    function hideDualSubtitles() {
+        if (dualSubtitleContainer) {
+            dualSubtitleContainer.style.opacity = '0'; // 隐藏字幕
+        }
+    }
+
+    // 检查是否隐藏字幕
+    function checkSubtitleTimeout() {
+        if (dualSubtitleContainer && Date.now() - lastUpdateTime > SUBTITLE_TIMEOUT) {
+            hideDualSubtitles(); // 隐藏字幕
+        } else {
+            showDualSubtitles(); // 显示字幕
+        }
+    }
+
+    // 每隔 1 秒检查字幕状态
+    setInterval(checkSubtitleTimeout, 1000);
+
+    // 检查视频切换，重新启动字幕监听器
+    function checkVideoChange() {
+        const videoElement = document.querySelector('video');
+        const currentVideoSrc = videoElement ? videoElement.src : null;
+
+        if (currentVideoSrc !== lastVideoSrc) {
+            lastVideoSrc = currentVideoSrc;
+            console.log('视频切换 detected, 重启字幕监听器');
+            observeSubtitles();
+        }
+    }
+
+    let lastVideoSrc = null;
+    setInterval(checkVideoChange, 2000); // 每 2 秒检查一次视频是否切换
 
     // 启动脚本
     observeSubtitles();
