@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tubi TV 双字幕 - 强制隐藏原字幕
 // @namespace    http://tampermonkey.net/
-// @version      0.9
-// @description  显示双字幕（原文 + 翻译），固定位置在底部，并强制隐藏原生字幕。2秒无变化自动隐藏字幕。
+// @version      0.8
+// @description  显示双字幕（原文 + 翻译），固定位置在底部，并强制隐藏原生字幕。
 // @author       YourName
 // @match        https://tubitv.com/*
 // @grant        GM_addStyle
@@ -16,7 +16,7 @@
 
     let lastOriginalText = ''; // 缓存上一次的字幕内容
     let subtitleObserver; // 用于保存字幕监听器
-    let dualSubtitleContainer; // 保存双字幕容器
+	let dualSubtitleContainer; // 保存双字幕容器
     let lastUpdateTime = 0; // 上一次字幕更新的时间
     const SUBTITLE_TIMEOUT = 2000; // 两秒无变化后隐藏字幕
 
@@ -89,6 +89,7 @@
         if (!videoPlayer) return;
 
         // 检查并清理旧的双字幕容器
+        dualSubtitleContainer = document.querySelector('#dualSubtitleContainer');
         if (!dualSubtitleContainer) {
             dualSubtitleContainer = document.createElement('div');
             dualSubtitleContainer.id = 'dualSubtitleContainer';
@@ -113,14 +114,14 @@
                     ${translatedText}
                 </div>
             `;
-
-            // 更新字幕更新时间
+			
+			// 更新字幕更新时间
             lastUpdateTime = Date.now();
             showDualSubtitles(); // 确保显示字幕
         });
     }
-
-    // 显示双字幕
+	
+	// 显示双字幕
     function showDualSubtitles() {
         if (dualSubtitleContainer) {
             dualSubtitleContainer.style.opacity = '1'; // 显示字幕
@@ -142,8 +143,8 @@
             showDualSubtitles(); // 显示字幕
         }
     }
-
-    // 每隔 1 秒检查字幕状态
+	
+	// 每隔 1 秒检查字幕状态
     setInterval(checkSubtitleTimeout, 1000);
 
     // 检查视频切换，重新启动字幕监听器
