@@ -17,11 +17,14 @@
     let lastOriginalText = ''; // 缓存上一次的字幕内容
 
     // 强制隐藏原字幕容器
-    GM_addStyle(`
-        [data-id="captionsComponent"] {
-            display: none !important; /* 强制隐藏原字幕 */
-        }
-    `);
+	GM_addStyle(`
+		[data-id="captionsComponent"] span {
+			font-size: 0 !important; /* 隐藏文字但保持可读取 */
+			position: absolute !important;  /* 将span移出视口 */
+			width: 1px !important;  /* 防止span占据空间 */
+            clip: rect(0, 0, 0, 0) !important;  /* 使span不可见 */
+		}
+	`);
 
     // 初始化字幕监听器
     function observeSubtitles() {
