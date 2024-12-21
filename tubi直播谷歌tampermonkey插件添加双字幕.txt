@@ -31,40 +31,42 @@
     // 初始化字幕监听器
     function observeSubtitles() {
         // 定位字幕容器（所有含有字幕的父元素）
-        const subtitleContainers = document.querySelectorAll('.o_szq.dynamicSubtitles');
-        if (subtitleContainers.length === 0) {
+        const subtitleContainer = document.querySelector('.o_szq.dynamicSubtitles');
+        if (!subtitleContainer) {
             console.log('未找到字幕容器，等待加载...');
             setTimeout(observeSubtitles, 500); // 每隔 0.5 秒重试
             return;
         }
 
-        subtitleContainers.forEach(subtitleContainer => {
-            // 如果已有监听器，则先停止
-            if (subtitleObserver) {
-                subtitleObserver.disconnect();
-            }
+        // 如果已有监听器，则先停止
+        if (subtitleObserver) {
+            subtitleObserver.disconnect();
+        }
 
-            console.log('字幕容器已找到:', subtitleContainer);
+        console.log('字幕容器已找到:', subtitleContainer);
 
-            // 创建 MutationObserver，监听字幕内容变化
-            subtitleObserver = new MutationObserver(() => {
-                const cueElements = subtitleContainer.querySelectorAll('.tubi-text-track-cue');
-                let originalSubtitle = '';
-                cueElements.forEach(cue => {
-                    originalSubtitle += cue.innerText.trim() + ' ';
-                });
-
-                originalSubtitle = originalSubtitle.trim();
-				 console.log('字幕内容：', originalSubtitle);
-                if (originalSubtitle && originalSubtitle !== lastOriginalText) {
-                    lastOriginalText = originalSubtitle; // 更新缓存
-                    translateAndRender(originalSubtitle);
-                }
+        // 创建 MutationObserver，监听字幕内容变化
+        subtitleObserver = new MutationObserver(() => {
+            const cueElements = subtitleContainer.querySelectorAll('.tubi-text-track-cue');
+            let originalSubtitle = '';
+            cueElements.forEach(cue => {
+                originalSubtitle += cue.innerText.trim() + ' ';
             });
 
-            // 监听指定的变动，监听子节点和子树变化
-            subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
+            originalSubtitle = originalSubtitle.trim();
+            console.log('字幕内容：', originalSubtitle);
+            if (originalSubtitle=="") {
+                observeSubtitles();
+                return;
+        }
+            if (originalSubtitle && originalSubtitle !== lastOriginalText) {
+                lastOriginalText = originalSubtitle; // 更新缓存
+                translateAndRender(originalSubtitle);
+            }
         });
+
+        // 监听指定的变动，监听子节点和子树变化
+        subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
 
         console.log('字幕监听器已启动');
     }
@@ -154,7 +156,7 @@
     setInterval(checkSubtitleTimeout, 1000);
 
     // 检查视频切换，重新启动字幕监听器
-    function checkVideoChange() {
+    function checkVideoChange(lastVideoSrc) {
         const videoElement = document.querySelector('video');
         const currentVideoSrc = videoElement ? videoElement.src : null;
 
@@ -166,7 +168,7 @@
     }
 
     let lastVideoSrc = null;
-    setInterval(checkVideoChange, 2000); // 每 2 秒检查一次视频是否切换
+    setInterval(checkVideoChange(lastVideoSrc), 2000); // 每 2 秒检查一次视频是否切换
 
     // 启动脚本
     observeSubtitles();
