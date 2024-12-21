@@ -58,7 +58,7 @@
             if (originalSubtitle=="") {
                 observeSubtitles();
                 return;
-        }
+			}
             if (originalSubtitle && originalSubtitle !== lastOriginalText) {
                 lastOriginalText = originalSubtitle; // 更新缓存
                 translateAndRender(originalSubtitle);

@@ -52,6 +52,10 @@
             const subtitleElement = subtitleContainer.querySelector('span');
             if (subtitleElement) {
                 const originalSubtitle = subtitleElement.innerText.trim();
+				if (originalSubtitle=="") {
+					observeSubtitles();
+					return;
+				}
                 if (originalSubtitle && originalSubtitle !== lastOriginalText) {
                     lastOriginalText = originalSubtitle; // 更新缓存
                     translateAndRender(originalSubtitle);
@@ -148,7 +152,7 @@
     setInterval(checkSubtitleTimeout, 1000);
 
     // 检查视频切换，重新启动字幕监听器
-    function checkVideoChange() {
+    function checkVideoChange(lastVideoSrc) {
         const videoElement = document.querySelector('video');
         const currentVideoSrc = videoElement ? videoElement.src : null;
 
@@ -160,7 +164,7 @@
     }
 
     let lastVideoSrc = null;
-    setInterval(checkVideoChange, 2000); // 每 2 秒检查一次视频是否切换
+    setInterval(checkVideoChange(lastVideoSrc), 2000); // 每 2 秒检查一次视频是否切换
 
     // 启动脚本
     observeSubtitles();
