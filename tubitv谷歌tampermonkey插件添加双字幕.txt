@@ -43,7 +43,7 @@
         const subtitleContainer = document.querySelector('[data-id="captionsComponent"]');
         const subtitleContainerLive = document.querySelector('.o_szq.dynamicSubtitles');
         if (!subtitleContainer&&!subtitleContainerLive) {
-            console.log('未找到字幕容器，等待加载...');
+            // console.log('未找到字幕容器，等待加载...');
             setTimeout(observeSubtitles, 500); // 每隔 0.5 秒重试
             return;
         }
@@ -54,10 +54,10 @@
         }
 
 		if (subtitleContainer) {
-            console.log('字幕容器TV已找到:', subtitleContainer);
+            // console.log('字幕容器TV已找到:', subtitleContainer);
             TV(subtitleContainer);
         } else {
-            console.log('字幕容器liveTV已找到:', subtitleContainerLive);
+            // console.log('字幕容器liveTV已找到:', subtitleContainerLive);
 		    liveTV(subtitleContainerLive);
 		}
     }
@@ -72,7 +72,7 @@
             });
 
             originalSubtitle = originalSubtitle.trim();
-            console.log('字幕内容：', originalSubtitle);
+            // console.log('字幕内容：', originalSubtitle);
             if (originalSubtitle=="") {
                 observeSubtitles();
                 return;
@@ -86,8 +86,7 @@
         // 监听指定的变动，监听子节点和子树变化
         subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
 
-        console.log('字幕监听器已启动');
-
+        // console.log('字幕监听器已启动');
 	}
 
 	function TV(subtitleContainer) {
