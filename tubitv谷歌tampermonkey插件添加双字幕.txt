@@ -53,15 +53,16 @@
             subtitleObserver.disconnect();
         }
 
-		if (!subtitleContainer&&subtitleContainer!=null) {
+		if (subtitleContainer) {
+            console.log('字幕容器TV已找到:', subtitleContainer);
             TV(subtitleContainer);
         } else {
+            console.log('字幕容器liveTV已找到:', subtitleContainerLive);
 		    liveTV(subtitleContainerLive);
 		}
     }
 
 	function liveTV(subtitleContainer) {
-	    console.log('字幕容器已找到:', subtitleContainer);
         // 创建 MutationObserver，监听字幕内容变化
         subtitleObserver = new MutationObserver(() => {
             const cueElements = subtitleContainer.querySelectorAll('.tubi-text-track-cue');
@@ -90,7 +91,6 @@
 	}
 
 	function TV(subtitleContainer) {
-	    console.log('字幕容器已找到:', subtitleContainer);
         // 创建 MutationObserver，监听字幕内容变化
         subtitleObserver = new MutationObserver(() => {
             const subtitleElement = subtitleContainer.querySelector('span');
@@ -134,7 +134,7 @@
         // 获取视频播放器容器
         const videoPlayer = document.querySelector('[data-id="hls"]');
         const videoPlayerLive = document.querySelector('.UMN55');
-        if (videoPlayer&&videoPlayer!=null) {
+        if (videoPlayer) {
              return videoPlayer;
         }
         return videoPlayerLive;
