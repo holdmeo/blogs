@@ -168,7 +168,7 @@
     }
 
     let lastVideoSrc = null;
-    setInterval(checkVideoChange(lastVideoSrc), 2000); // 每 2 秒检查一次视频是否切换
+    setInterval(() => checkVideoChange(lastVideoSrc), 2000); // 每 2 秒检查一次视频是否切换
 
     // 启动脚本
     observeSubtitles();
