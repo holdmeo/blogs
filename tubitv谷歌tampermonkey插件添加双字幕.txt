@@ -28,13 +28,21 @@
             width: 1px !important;  /* 防止span占据空间 */
             clip: rect(0, 0, 0, 0) !important;  /* 使span不可见 */
         }
+		
+		.o_szq.dynamicSubtitles .tubi-text-track-cue {
+            font-size: 0 !important; /* 隐藏文字但保持可读取 */
+            position: absolute !important;  /* 将span移出视口 */
+            width: 1px !important;  /* 防止span占据空间 */
+            clip: rect(0, 0, 0, 0) !important;  /* 使span不可见 */
+        }
     `);
 
     // 初始化字幕监听器
     function observeSubtitles() {
         // 定位字幕容器
         const subtitleContainer = document.querySelector('[data-id="captionsComponent"]');
-        if (!subtitleContainer) {
+        const subtitleContainerLive = document.querySelector('.o_szq.dynamicSubtitles');
+        if (!subtitleContainer&&!subtitleContainerLive) {
             console.log('未找到字幕容器，等待加载...');
             setTimeout(observeSubtitles, 500); // 每隔 0.5 秒重试
             return;
@@ -44,9 +52,45 @@
         if (subtitleObserver) {
             subtitleObserver.disconnect();
         }
+		
+		if (!subtitleContainer) {
+            TV(subtitleContainer);
+        } else {
+		    liveTV(subtitleContainerLive);
+		}
+    }
+	
+	function liveTV(subtitleContainer) {
+	    console.log('字幕容器已找到:', subtitleContainer);
+        // 创建 MutationObserver，监听字幕内容变化
+        subtitleObserver = new MutationObserver(() => {
+            const cueElements = subtitleContainer.querySelectorAll('.tubi-text-track-cue');
+            let originalSubtitle = '';
+            cueElements.forEach(cue => {
+                originalSubtitle += cue.innerText.trim() + ' ';
+            });
 
-        console.log('字幕容器已找到:', subtitleContainer);
+            originalSubtitle = originalSubtitle.trim();
+            console.log('字幕内容：', originalSubtitle);
+            if (originalSubtitle=="") {
+                observeSubtitles();
+                return;
+			}
+            if (originalSubtitle && originalSubtitle !== lastOriginalText) {
+                lastOriginalText = originalSubtitle; // 更新缓存
+                translateAndRender(originalSubtitle);
+            }
+        });
 
+        // 监听指定的变动，监听子节点和子树变化
+        subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
+
+        console.log('字幕监听器已启动');
+	
+	}
+	
+	function TV(subtitleContainer) {
+	    console.log('字幕容器已找到:', subtitleContainer);
         // 创建 MutationObserver，监听字幕内容变化
         subtitleObserver = new MutationObserver(() => {
             const subtitleElement = subtitleContainer.querySelector('span');
@@ -65,7 +109,7 @@
 
         subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
         console.log('字幕监听器已启动');
-    }
+	}
 
     // 调用 Google 翻译 API 翻译字幕
     function translateText(text, callback) {
@@ -90,6 +134,9 @@
     function translateAndRender(originalText) {
         // 获取视频播放器容器
         const videoPlayer = document.querySelector('[data-id="hls"]');
+		if (!videoPlayer) {
+			videoPlayer = document.querySelector('.UMN55');
+		}
         if (!videoPlayer) return;
 
         // 检查并清理旧的双字幕容器
