@@ -28,7 +28,7 @@
             width: 1px !important;  /* 防止span占据空间 */
             clip: rect(0, 0, 0, 0) !important;  /* 使span不可见 */
         }
-		
+
 		.o_szq.dynamicSubtitles .tubi-text-track-cue {
             font-size: 0 !important; /* 隐藏文字但保持可读取 */
             position: absolute !important;  /* 将span移出视口 */
@@ -52,14 +52,14 @@
         if (subtitleObserver) {
             subtitleObserver.disconnect();
         }
-		
-		if (!subtitleContainer) {
+
+		if (!subtitleContainer&&subtitleContainer!=null) {
             TV(subtitleContainer);
         } else {
 		    liveTV(subtitleContainerLive);
 		}
     }
-	
+
 	function liveTV(subtitleContainer) {
 	    console.log('字幕容器已找到:', subtitleContainer);
         // 创建 MutationObserver，监听字幕内容变化
@@ -86,9 +86,9 @@
         subtitleObserver.observe(subtitleContainer, { childList: true, subtree: true });
 
         console.log('字幕监听器已启动');
-	
+
 	}
-	
+
 	function TV(subtitleContainer) {
 	    console.log('字幕容器已找到:', subtitleContainer);
         // 创建 MutationObserver，监听字幕内容变化
@@ -130,13 +130,20 @@
         });
     }
 
+    function getVideoPlayer () {
+        // 获取视频播放器容器
+        const videoPlayer = document.querySelector('[data-id="hls"]');
+        const videoPlayerLive = document.querySelector('.UMN55');
+        if (videoPlayer&&videoPlayer!=null) {
+             return videoPlayer;
+        }
+        return videoPlayerLive;
+    }
+
     // 渲染双字幕
     function translateAndRender(originalText) {
         // 获取视频播放器容器
-        const videoPlayer = document.querySelector('[data-id="hls"]');
-		if (!videoPlayer) {
-			videoPlayer = document.querySelector('.UMN55');
-		}
+        const videoPlayer = getVideoPlayer();
         if (!videoPlayer) return;
 
         // 检查并清理旧的双字幕容器
@@ -165,13 +172,13 @@
                     ${translatedText}
                 </div>
             `;
-			
+
 			// 更新字幕更新时间
             lastUpdateTime = Date.now();
             showDualSubtitles(); // 确保显示字幕
         });
     }
-	
+
 	// 显示双字幕
     function showDualSubtitles() {
         if (dualSubtitleContainer) {
@@ -194,7 +201,7 @@
             showDualSubtitles(); // 显示字幕
         }
     }
-	
+
 	// 每隔 1 秒检查字幕状态
     setInterval(checkSubtitleTimeout, 1000);
 
