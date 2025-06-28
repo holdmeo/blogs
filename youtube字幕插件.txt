@@ -1,0 +1,129 @@
+// ==UserScript==
+// @name         YouTube 双字幕 - 字体大小不变 + 向上移动 20px
+// @namespace    http://tampermonkey.net/
+// @version      1.7
+// @description  每2秒检测字幕变化，翻译为中文显示双字幕，字体大小28px，向上偏移20px，隐藏原生字幕，显示自定义字幕（原文 + 中文）
+// @author       ChatGPT
+// @match        https://www.youtube.com/*
+// @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
+// @connect      translate.googleapis.com
+// @run-at       document-end
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    let lastOriginalText = '';
+    let lastTranslatedText = '';
+    let subtitleContainer = null;
+    let lastUpdateTime = 0;
+    const CHECK_INTERVAL = 1000;
+    const HIDE_TIMEOUT = 2000;
+
+    // 隐藏原生字幕
+    GM_addStyle(`
+        .ytp-caption-segment {
+            font-size: 0 !important;
+            color: transparent !important;
+        }
+    `);
+
+    function renderSubtitles(original, translated) {
+        if (!subtitleContainer) {
+            subtitleContainer = document.createElement('div');
+            subtitleContainer.id = 'dual-subtitle';
+            subtitleContainer.style.position = 'absolute';
+            subtitleContainer.style.bottom = '10%';
+            subtitleContainer.style.width = '100%';
+            subtitleContainer.style.textAlign = 'center';
+            subtitleContainer.style.pointerEvents = 'none';
+            subtitleContainer.style.zIndex = '9999';
+            subtitleContainer.style.transform = 'translateY(-80px)'; // 向上偏移20px
+
+            const commonStyle = `
+                font-size: 24px;
+                font-family: Arial, sans-serif;
+                text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+                line-height: 1.2;
+            `;
+
+            const originalDiv = document.createElement('div');
+            originalDiv.id = 'dual-subtitle-original';
+            originalDiv.style.cssText = commonStyle;
+            originalDiv.style.color = 'white';
+
+            const translatedDiv = document.createElement('div');
+            translatedDiv.id = 'dual-subtitle-translated';
+            translatedDiv.style.cssText = commonStyle;
+            translatedDiv.style.color = 'yellow';
+
+            subtitleContainer.appendChild(originalDiv);
+            subtitleContainer.appendChild(translatedDiv);
+            document.body.appendChild(subtitleContainer);
+        }
+
+        //document.getElementById('dual-subtitle-original').textContent = original;
+        document.getElementById('dual-subtitle-translated').textContent = translated;
+        subtitleContainer.style.opacity = '1';
+        lastUpdateTime = Date.now();
+    }
+
+    function translateText(text, callback) {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url,
+            onload: function (res) {
+                try {
+                    const data = JSON.parse(res.responseText);
+                    const translated = data?.[0]?.map(part => part[0]).join('');
+                    callback(translated || '');
+                } catch (e) {
+                    console.error('翻译解析失败:', e);
+                    callback('');
+                }
+            },
+            onerror: function (e) {
+                console.error('翻译请求失败:', e);
+                callback('');
+            }
+        });
+    }
+
+    function checkCaptions() {
+        const segments = document.querySelectorAll('.ytp-caption-segment');
+        const currentText = Array.from(segments).map(e => e.textContent.trim()).join(' ').trim();
+
+        if (currentText && currentText !== lastOriginalText) {
+            lastOriginalText = currentText;
+            translateText(currentText, translated => {
+                if (translated && translated !== lastTranslatedText) {
+                    lastTranslatedText = translated;
+                    renderSubtitles(currentText, translated);
+                }
+            });
+        }
+    }
+
+    // 隐藏过期字幕
+    setInterval(() => {
+        if (subtitleContainer && Date.now() - lastUpdateTime > HIDE_TIMEOUT) {
+            subtitleContainer.style.opacity = '0';
+        }
+    }, 1000);
+
+    // 检查字幕 + 视频切换
+    let lastVideoSrc = '';
+    setInterval(() => {
+        const video = document.querySelector('video');
+        const src = video?.currentSrc;
+        if (src && src !== lastVideoSrc) {
+            lastVideoSrc = src;
+            lastOriginalText = '';
+            lastTranslatedText = '';
+        }
+        checkCaptions(); // 每2秒检测字幕
+    }, CHECK_INTERVAL);
+
+})();
