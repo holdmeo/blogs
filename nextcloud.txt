@@ -1,0 +1,18 @@
+
+
+
+
+docker run -d -p 9000:80  -v E:/webdab:/var/www/html/data --name nextcloud nextcloud
+
+
+docker exec -it nextcloud bash
+
+
+php /var/www/html/occ maintenance:mode --on
+
+
+php /var/www/html/occ maintenance:mode --off
+
+
+php /var/www/html/occ maintenance:repair
+
