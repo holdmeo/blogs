@@ -18,7 +18,7 @@
     let lastTranslatedText = '';
     let subtitleContainer = null;
     let lastUpdateTime = 0;
-    const CHECK_INTERVAL = 1000;
+    const CHECK_INTERVAL = 500;
     const HIDE_TIMEOUT = 2000;
 
     // 隐藏原生字幕
@@ -60,7 +60,10 @@
 
             subtitleContainer.appendChild(originalDiv);
             subtitleContainer.appendChild(translatedDiv);
-            document.body.appendChild(subtitleContainer);
+            const video = document.querySelector('.html5-video-container');
+            const container = video.parentElement;
+            container.style.position = 'relative';
+            container.appendChild(subtitleContainer);
         }
 
         //document.getElementById('dual-subtitle-original').textContent = original;
