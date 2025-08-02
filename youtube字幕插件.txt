@@ -113,6 +113,8 @@
     setInterval(() => {
         if (subtitleContainer && Date.now() - lastUpdateTime > HIDE_TIMEOUT) {
             subtitleContainer.style.opacity = '0';
+        } else {
+            lastUpdateTime = Date.now();
         }
     }, 1000);
 
