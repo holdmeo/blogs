@@ -16,7 +16,7 @@
 
     let lastOriginalText = ''; // 缓存上一次的字幕内容
     let subtitleObserver; // 用于保存字幕监听器
-	let dualSubtitleContainer; // 保存双字幕容器
+    let dualSubtitleContainer; // 保存双字幕容器
     let lastUpdateTime = 0; // 上一次字幕更新的时间
     const SUBTITLE_TIMEOUT = 2000; // 两秒无变化后隐藏字幕
 
@@ -29,7 +29,7 @@
             clip: rect(0, 0, 0, 0) !important;  /* 使span不可见 */
         }
 
-		.o_szq.dynamicSubtitles .tubi-text-track-cue {
+        .o_szq.dynamicSubtitles .tubi-text-track-cue {
             font-size: 0 !important; /* 隐藏文字但保持可读取 */
             position: absolute !important;  /* 将span移出视口 */
             width: 1px !important;  /* 防止span占据空间 */
@@ -44,7 +44,7 @@
         const subtitleContainerLive = document.querySelector('.o_szq.dynamicSubtitles');
         if (!subtitleContainer&&!subtitleContainerLive) {
             // console.log('未找到字幕容器，等待加载...');
-            setTimeout(observeSubtitles, 500); // 每隔 0.5 秒重试
+            setTimeout(observeSubtitles, 200); // 每隔 0.5 秒重试
             return;
         }
 
@@ -53,13 +53,13 @@
             subtitleObserver.disconnect();
         }
 
-		if (subtitleContainer) {
+	if (subtitleContainer) {
             // console.log('字幕容器TV已找到:', subtitleContainer);
             TV(subtitleContainer);
         } else {
             // console.log('字幕容器liveTV已找到:', subtitleContainerLive);
-		    liveTV(subtitleContainerLive);
-		}
+	    liveTV(subtitleContainerLive);
+	}
     }
 
 	function liveTV(subtitleContainer) {
@@ -76,11 +76,13 @@
             if (originalSubtitle=="") {
                 observeSubtitles();
                 return;
-			}
+	    }
             if (originalSubtitle && originalSubtitle !== lastOriginalText) {
                 lastOriginalText = originalSubtitle; // 更新缓存
                 translateAndRender(originalSubtitle);
-            }
+            } else {
+		lastUpdateTime = Date.now();
+	    }
         });
 
         // 监听指定的变动，监听子节点和子树变化
@@ -95,14 +97,16 @@
             const subtitleElement = subtitleContainer.querySelector('span');
             if (subtitleElement) {
                 const originalSubtitle = subtitleElement.innerText.trim();
-				if (originalSubtitle=="") {
-					observeSubtitles();
-					return;
-				}
+		if (originalSubtitle=="") {
+			observeSubtitles();
+			return;
+		}
                 if (originalSubtitle && originalSubtitle !== lastOriginalText) {
                     lastOriginalText = originalSubtitle; // 更新缓存
                     translateAndRender(originalSubtitle);
-                }
+                } else {
+		  lastUpdateTime = Date.now();
+		}
             }
         });
 
@@ -172,13 +176,13 @@
                 </div>
             `;
 
-			// 更新字幕更新时间
+	    // 更新字幕更新时间
             lastUpdateTime = Date.now();
             showDualSubtitles(); // 确保显示字幕
         });
     }
 
-	// 显示双字幕
+    // 显示双字幕
     function showDualSubtitles() {
         if (dualSubtitleContainer) {
             dualSubtitleContainer.style.opacity = '1'; // 显示字幕
@@ -208,7 +212,7 @@
     function checkVideoChange(lastVideoSrc) {
         const videoElement = document.querySelector('video');
         const currentVideoSrc = videoElement ? videoElement.src : null;
-		console.log('checkVideoChange');
+	console.log('checkVideoChange');
         if (currentVideoSrc !== lastVideoSrc) {
             lastVideoSrc = currentVideoSrc;
             console.log('视频切换 detected, 重启字幕监听器');
