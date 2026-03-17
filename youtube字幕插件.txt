@@ -1,9 +1,8 @@
 // ==UserScript==
-// @name         YouTube 双字幕 - 字体大小不变 + 向上移动 20px
+// @name         YouTube 双字幕 - 实时稳定版
 // @namespace    http://tampermonkey.net/
-// @version      1.7
-// @description  每2秒检测字幕变化，翻译为中文显示双字幕，字体大小28px，向上偏移20px，隐藏原生字幕，显示自定义字幕（原文 + 中文）
-// @author       ChatGPT
+// @version      3.1
+// @description  实时英文 + 句子级中文翻译（稳定版）
 // @match        https://www.youtube.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -12,123 +11,209 @@
 // ==/UserScript==
 
 (function () {
+
     'use strict';
 
-    let lastOriginalText = '';
-    let lastTranslatedText = '';
-    let subtitleContainer = null;
-    let lastUpdateTime = 0;
-    const CHECK_INTERVAL = 500;
-    const HIDE_TIMEOUT = 2000;
+    let subtitleContainer;
+    let lastEnglish='';
+    let lastChinese='';
 
-    // 隐藏原生字幕
+    let sentenceBuffer='';
+    let lastCaption='';
+    let lastUpdate=0;
+
+    const SENTENCE_TIMEOUT=500;
+
+    let lastTranslateTime = 0;
+    const TRANSLATE_INTERVAL = 1200; // 1.2秒
+
     GM_addStyle(`
-        .ytp-caption-segment {
-            font-size: 0 !important;
-            color: transparent !important;
+        .ytp-caption-segment{
+            font-size:0!important;
+            color:transparent!important;
         }
     `);
 
-    function renderSubtitles(original, translated) {
-        if (!subtitleContainer) {
-            subtitleContainer = document.createElement('div');
-            subtitleContainer.id = 'dual-subtitle';
-            subtitleContainer.style.position = 'absolute';
-            subtitleContainer.style.bottom = '10%';
-            subtitleContainer.style.width = '100%';
-            subtitleContainer.style.textAlign = 'center';
-            subtitleContainer.style.pointerEvents = 'none';
-            subtitleContainer.style.zIndex = '9999';
-            subtitleContainer.style.transform = 'translateY(-80px)'; // 向上偏移20px
+    function createUI(){
 
-            const commonStyle = `
-                font-size: 24px;
-                font-family: Arial, sans-serif;
-                text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
-                line-height: 1.2;
-            `;
+        if(subtitleContainer) return;
 
-            const originalDiv = document.createElement('div');
-            originalDiv.id = 'dual-subtitle-original';
-            originalDiv.style.cssText = commonStyle;
-            originalDiv.style.color = 'white';
+        subtitleContainer=document.createElement('div');
 
-            const translatedDiv = document.createElement('div');
-            translatedDiv.id = 'dual-subtitle-translated';
-            translatedDiv.style.cssText = commonStyle;
-            translatedDiv.style.color = 'yellow';
+        subtitleContainer.style.position='absolute';
+        subtitleContainer.style.bottom='12%';
+        subtitleContainer.style.left='40px';
+        subtitleContainer.style.zIndex='9999';
+        subtitleContainer.style.pointerEvents='none';
 
-            subtitleContainer.appendChild(originalDiv);
-            subtitleContainer.appendChild(translatedDiv);
-            const video = document.querySelector('.html5-video-container');
-            const container = video.parentElement;
-            container.style.position = 'relative';
-            container.appendChild(subtitleContainer);
-        }
+        const style=`
+        font-size:26px;
+        font-family:Arial;
+        line-height:1.35;
+        text-shadow:0 0 6px black;
+        `;
 
-        //document.getElementById('dual-subtitle-original').textContent = original;
-        document.getElementById('dual-subtitle-translated').textContent = translated;
-        subtitleContainer.style.opacity = '1';
-        lastUpdateTime = Date.now();
+        const en=document.createElement('div');
+        en.id='dual-en';
+        en.style=style+"color:white";
+
+        const zh=document.createElement('div');
+        zh.id='dual-zh';
+        zh.style=style+"color:yellow";
+
+        subtitleContainer.appendChild(en);
+        subtitleContainer.appendChild(zh);
+
+        const video=document.querySelector('.html5-video-container');
+
+        if(video) video.parentElement.appendChild(subtitleContainer);
+
     }
 
-    function translateText(text, callback) {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+    function render(en,zh){
+
+        createUI();
+
+        document.getElementById('dual-en').textContent=en;
+        document.getElementById('dual-zh').textContent=zh;
+        console.log("字幕en：", en);
+        console.log("字幕：", zh);
+
+    }
+
+    function translate(text,callback){
+
+        const url=`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+
         GM_xmlhttpRequest({
-            method: 'GET',
-            url,
-            onload: function (res) {
-                try {
-                    const data = JSON.parse(res.responseText);
-                    const translated = data?.[0]?.map(part => part[0]).join('');
-                    callback(translated || '');
-                } catch (e) {
-                    console.error('翻译解析失败:', e);
+            method:'GET',
+            url:url,
+            onload(res){
+
+                try{
+
+                    const data=JSON.parse(res.responseText);
+                    const zh=data[0].map(e=>e[0]).join('');
+
+                    callback(zh);
+
+                }catch{
+
                     callback('');
+
                 }
+
             },
-            onerror: function (e) {
-                console.error('翻译请求失败:', e);
+            onerror(){
                 callback('');
             }
         });
+
     }
 
-    function checkCaptions() {
-        const segments = document.querySelectorAll('.ytp-caption-segment');
-        const currentText = Array.from(segments).map(e => e.textContent.trim()).join(' ').trim();
+    function sentenceEnd(text){
 
-        if (currentText && currentText !== lastOriginalText) {
-            lastOriginalText = currentText;
-            translateText(currentText, translated => {
-                if (translated && translated !== lastTranslatedText) {
-                    lastTranslatedText = translated;
-                    renderSubtitles(currentText, translated);
-                }
+        return /[.!?。！？]$/.test(text) || text.length>120;
+
+    }
+
+    function getCaption(){
+
+        const seg=document.querySelectorAll('.ytp-caption-segment');
+
+        if(!seg.length) return lastCaption;
+
+        const text=Array.from(seg)
+            .map(e=>e.textContent.trim())
+            .join(' ')
+            .replace(/\s+/g,' ')
+            .trim();
+
+        if(text) lastCaption=text;
+
+        return text||lastCaption;
+
+    }
+
+    function process(){
+
+        const text=getCaption();
+
+        if(!text) return;
+
+        if(text===lastEnglish) return;
+
+        lastEnglish=text;
+
+        render(text,lastChinese);
+
+        if(text.startsWith(sentenceBuffer))
+            sentenceBuffer=text;
+        else
+            sentenceBuffer+=" "+text;
+
+        sentenceBuffer=sentenceBuffer.trim();
+        const interval=(Date.now()-lastUpdate);
+        console.log("字幕更新时间：", interval);
+        lastUpdate=Date.now();
+
+        if(!sentenceBuffer) return;
+        const now = Date.now();
+        const timeout=(now-lastUpdate)>SENTENCE_TIMEOUT;
+        const canTranslate = (now - lastTranslateTime) > TRANSLATE_INTERVAL;
+
+        if(sentenceEnd(sentenceBuffer)|| canTranslate ||timeout){
+
+            const finalText=sentenceBuffer;
+
+            sentenceBuffer='';
+
+            translate(finalText,zh=>{
+
+                lastChinese=zh;
+
+                render(lastEnglish,zh);
+
             });
+
         }
+
     }
 
-    // 隐藏过期字幕
-    setInterval(() => {
-        if (subtitleContainer && Date.now() - lastUpdateTime > HIDE_TIMEOUT) {
-            subtitleContainer.style.opacity = '0';
-        } else {
-            lastUpdateTime = Date.now();
-        }
-    }, 1000);
+    function observeCaptions(){
 
-    // 检查字幕 + 视频切换
-    let lastVideoSrc = '';
-    setInterval(() => {
-        const video = document.querySelector('video');
-        const src = video?.currentSrc;
-        if (src && src !== lastVideoSrc) {
-            lastVideoSrc = src;
-            lastOriginalText = '';
-            lastTranslatedText = '';
-        }
-        checkCaptions(); // 每2秒检测字幕
-    }, CHECK_INTERVAL);
+        const target=document.querySelector('.ytp-caption-window-container');
+
+        if(!target) return;
+
+        const observer=new MutationObserver(process);
+
+        observer.observe(target,{
+            childList:true,
+            subtree:true,
+            characterData:true
+        });
+
+    }
+
+    function waitVideo(){
+
+        const timer=setInterval(()=>{
+
+            const cap=document.querySelector('.ytp-caption-window-container');
+
+            if(cap){
+
+                clearInterval(timer);
+
+                observeCaptions();
+
+            }
+
+        },1000);
+
+    }
+
+    waitVideo();
 
 })();
