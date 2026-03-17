@@ -76,9 +76,6 @@
 
         document.getElementById('dual-en').textContent=en;
         document.getElementById('dual-zh').textContent=zh;
-        console.log("字幕en：", en);
-        console.log("字幕：", zh);
-
     }
 
     function translate(text,callback){
@@ -153,8 +150,6 @@
             sentenceBuffer+=" "+text;
 
         sentenceBuffer=sentenceBuffer.trim();
-        const interval=(Date.now()-lastUpdate);
-        console.log("字幕更新时间：", interval);
         lastUpdate=Date.now();
 
         if(!sentenceBuffer) return;
@@ -180,14 +175,15 @@
 
     }
 
+    let observer=null;
+
     function observeCaptions(){
-
         const target=document.querySelector('.ytp-caption-window-container');
-
         if(!target) return;
-
-        const observer=new MutationObserver(process);
-
+        if(observer){
+            observer.disconnect();
+        }
+        observer=new MutationObserver(process);
         observer.observe(target,{
             childList:true,
             subtree:true,
@@ -196,24 +192,50 @@
 
     }
 
+    function reset(){
+        console.log('字幕系统重置');
+        lastEnglish='';
+        lastChinese='';
+        sentenceBuffer='';
+        lastCaption='';
+
+        if(subtitleContainer){
+            subtitleContainer.remove();
+            subtitleContainer=null;
+        }
+        waitVideo(); // 重新监听
+    }
+
     function waitVideo(){
-
+        let retry=0;
         const timer=setInterval(()=>{
-
             const cap=document.querySelector('.ytp-caption-window-container');
-
             if(cap){
-
                 clearInterval(timer);
-
                 observeCaptions();
-
             }
-
+            if(retry++ > 15){
+                clearInterval(timer);
+            }
         },1000);
 
     }
 
     waitVideo();
+
+    document.addEventListener('yt-navigate-finish', () => {
+
+        setTimeout(() => {
+            reset();
+        }, 1000);
+
+    });
+
+    setInterval(() => {
+        const cap=document.querySelector('.ytp-caption-window-container');
+        if(!cap){
+            reset();
+        }
+    }, 3000);
 
 })();
