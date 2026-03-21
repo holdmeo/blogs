@@ -26,7 +26,6 @@
 
     let lastTranslateTime = 0;
     const TRANSLATE_INTERVAL = 1200; // 1.2秒
-    let lastTranslatedText = '';
 
     GM_addStyle(`
         .ytp-caption-segment{
@@ -152,23 +151,15 @@
 
         render(text,lastChinese);
 
-        if(text.startsWith(sentenceBuffer))
-            sentenceBuffer=text;
-        else
-            // sentenceBuffer+=" "+text;
-            sentenceBuffer=text;
+        sentenceBuffer=text;
 
         sentenceBuffer=sentenceBuffer.trim();
-        lastUpdate=Date.now();
 
         if(!sentenceBuffer) return;
+        lastUpdate=Date.now();
         const now = Date.now();
         const timeout=(now-lastUpdate)>SENTENCE_TIMEOUT;
         const canTranslate = (now - lastTranslateTime) > TRANSLATE_INTERVAL;
-
-        const finalText=sentenceBuffer;
-        if(finalText === lastTranslatedText) return;
-        lastTranslatedText = finalText;
 
         if(sentenceEnd(sentenceBuffer)|| canTranslate ||timeout){
             const finalText=sentenceBuffer;
