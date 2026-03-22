@@ -20,6 +20,7 @@
 
     let sentenceBuffer='';
     let lastCaption='';
+    let pauseCaption='';
     let lastUpdate=0;
 
     const SENTENCE_TIMEOUT=500;
@@ -137,9 +138,22 @@
         return video && !video.paused && !video.ended;
     }
 
+    function translateCurrentCaption(){
+        const text = getCaption();
+        if(!text) return;
+        if(pauseCaption === text) return;
+        translate(text, zh => {
+            lastChinese = zh;
+            pauseCaption=text;
+            console.log('字幕系统重置en'+text);
+            console.log('字幕系统重置zh'+zh);
+            render(text, zh);
+        });
+    }
+
     function process(){
 
-        if(!isVideoPlaying()) return;
+        if(!isVideoPlaying() && !document.hidden) return;
 
         const text=getCaption();
 
@@ -171,7 +185,6 @@
             });
 
         }
-
     }
 
     let observer=null;
@@ -209,9 +222,18 @@
         let retry=0;
         const timer=setInterval(()=>{
             const cap=document.querySelector('.ytp-caption-window-container');
-            if(cap){
+            const video=document.querySelector('video');
+            if(cap && video){
                 clearInterval(timer);
                 observeCaptions();
+
+                video.addEventListener('pause', () => {
+                    setTimeout(translateCurrentCaption, 300);
+                });
+
+                video.addEventListener('seeked', () => {
+                    setTimeout(translateCurrentCaption, 300);
+                });
             }
             if(retry++ > 15){
                 clearInterval(timer);
