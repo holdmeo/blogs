@@ -145,8 +145,6 @@
         translate(text, zh => {
             lastChinese = zh;
             pauseCaption=text;
-            console.log('字幕系统重置en'+text);
-            console.log('字幕系统重置zh'+zh);
             render(text, zh);
         });
     }
