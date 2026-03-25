@@ -23,7 +23,7 @@
     let pauseCaption='';
     let lastUpdate=0;
 
-    const SENTENCE_TIMEOUT=500;
+    const SENTENCE_TIMEOUT=700;
 
     let lastTranslateTime = 0;
     const TRANSLATE_INTERVAL = 1200; // 1.2秒
@@ -226,11 +226,13 @@
                 observeCaptions();
 
                 video.addEventListener('pause', () => {
+                    observeCaptions();
                     setTimeout(translateCurrentCaption, 300);
                 });
 
                 video.addEventListener('seeked', () => {
-                    setTimeout(translateCurrentCaption, 300);
+                    observeCaptions();
+                    setTimeout(translateCurrentCaption, 250);
                 });
             }
             if(retry++ > 15){
